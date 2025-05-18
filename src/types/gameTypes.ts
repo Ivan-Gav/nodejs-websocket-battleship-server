@@ -45,3 +45,10 @@ export type TGameState = {
   currentTurn: string; // playerId
   winnerId?: string; // playerId, if the game is over
 };
+
+export type TAttackResult = {
+  targetCell: TPosition;
+  status: 'miss' | 'shot' | 'killed';
+  surroundingMisses: TPosition[];
+  winnerId?: string;
+};

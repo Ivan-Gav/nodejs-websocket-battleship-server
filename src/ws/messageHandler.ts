@@ -18,6 +18,7 @@ import {
   getRoomById,
   addShips,
   getGameSessionById,
+  applyAttack,
 } from '../game/game.js';
 
 export function handleMessage(
@@ -40,9 +41,6 @@ export function handleMessage(
       ).indexRoom.toString();
 
       const success = addUserToRoom(roomId, player);
-      console.log(
-        `user ${player.name} added to room ${roomId} success: ${success}`,
-      );
 
       if (!success) {
         send(ws, {
@@ -97,20 +95,51 @@ export function handleMessage(
     //------------------------------
     case 'randomAttack':
     case 'attack': {
-      // Here you would look up the game state, validate turn, apply hit logic
-      // For now just echo back a mock attack result
-      send(ws, {
-        type: 'attack',
-        data: {
-          position: {
-            x: (message.data as TPosition).x,
-            y: (message.data as TPosition).y,
+      const { gameId, x, y, indexPlayer } = message.data as unknown as {
+        gameId: number | string;
+        x: number;
+        y: number;
+        indexPlayer: number | string;
+      };
+
+      const result = applyAttack(String(gameId), String(indexPlayer), { x, y });
+
+      if (!result) return;
+
+      // Send primary shot feedback
+      ws.send(
+        specialJsonStringifyForThatCrookedFrontend({
+          type: 'attack',
+          data: {
+            position: result.targetCell,
+            currentPlayer: indexPlayer,
+            status: result.status,
           },
-          currentPlayer: player.id,
-          status: 'miss',
-        },
-        id: 0,
-      });
+          id: 0,
+        }),
+      );
+
+      // Send automatic surrounding misses if ship was killed
+      if (result.status === 'killed' && result.surroundingMisses.length > 0) {
+        for (const missedCell of result.surroundingMisses) {
+          ws.send(
+            specialJsonStringifyForThatCrookedFrontend({
+              type: 'attack',
+              data: {
+                position: missedCell,
+                currentPlayer: indexPlayer,
+                status: 'miss',
+              },
+              id: 0,
+            }),
+          );
+        }
+      }
+
+      // Optionally notify both players of game over
+      if (result.winnerId) {
+        // send winner notification
+      }
       break;
     }
 

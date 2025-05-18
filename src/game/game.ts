@@ -5,8 +5,14 @@ import {
   TPlayer,
   TShip,
   TPlayerBoardState,
+  TAttackResult,
+  TPosition,
 } from '../types';
-import { getEmptyGamestate } from './utils.js';
+import {
+  getEmptyGamestate,
+  getShipCells,
+  getSurroundingCells,
+} from './utils.js';
 
 const rooms = new Map<string, TRoom>(); // roomId → room
 const gameSessions = new Map<string, TGameSession>(); // gameId → game session
@@ -25,7 +31,9 @@ export function getRoomById(roomId: string): TRoom | undefined {
 
 export function addUserToRoom(roomId: string, player: TPlayer): boolean {
   const room = rooms.get(roomId);
-  if (!room || room.users.length >= 2) return false;
+  if (!room || room.users.length >= 2 || room.users.includes(player)) {
+    return false;
+  }
   room.users.push(player);
   return true;
 }
@@ -105,11 +113,104 @@ export function addShips({
 
   // check if both players added ships
   const updatedSession = getGameSessionById(gameId);
-  console.log('updated session => ', updatedSession);
 
   const playerStates = updatedSession?.state.playerStates;
   if (playerStates && Object.entries(playerStates).length === 2) {
     return { success: true, bothReady: true };
   }
   return { success: true, bothReady: false };
+}
+
+export function applyAttack(
+  gameId: string,
+  attackerId: string,
+  cell: TPosition,
+): TAttackResult | null {
+  const game = getGameSessionById(gameId);
+  if (!game) {
+    return null;
+  }
+  if (game.turn !== attackerId) {
+    return null;
+  }
+
+  const [p1, p2] = game.players;
+  const defenderId = p1.id === attackerId ? p2.id : p1.id;
+
+  const attacker = game.state.playerStates[attackerId];
+  const defender = game.state.playerStates[defenderId];
+
+  // Prevent duplicate shots
+  if (attacker.shotsFired.some((c) => c.x === cell.x && c.y === cell.y)) {
+    return null;
+  }
+
+  attacker.shotsFired.push(cell);
+  defender.shotsReceived.push(cell);
+
+  const hitShip = defender.ships.find((ship) =>
+    getShipCells(ship).some((s) => s.x === cell.x && s.y === cell.y),
+  );
+
+  let status: 'miss' | 'shot' | 'killed' = 'miss';
+  let surroundingMisses: TPosition[] = [];
+
+  if (hitShip) {
+    const alreadyHit = hitShip.hitCells?.some(
+      (c) => c.x === cell.x && c.y === cell.y,
+    );
+    if (!alreadyHit) {
+      if (hitShip.hitCells) {
+        hitShip.hitCells.push(cell);
+      } else {
+        hitShip.hitCells = [cell];
+      }
+    }
+
+    const shipCells = getShipCells(hitShip);
+    const isSunk = shipCells.every((sc) =>
+      hitShip.hitCells?.some((hc) => hc.x === sc.x && hc.y === sc.y),
+    );
+
+    if (isSunk) {
+      status = 'killed';
+      surroundingMisses = getSurroundingCells(shipCells).filter(
+        (surCell) =>
+          !attacker.shotsFired.some(
+            (s) => s.x === surCell.x && s.y === surCell.y,
+          ),
+      );
+
+      for (const sCell of surroundingMisses) {
+        attacker.shotsFired.push(sCell);
+        defender.shotsReceived.push(sCell);
+      }
+    } else {
+      status = 'shot';
+    }
+  }
+
+  // Check for winner
+  const defenderLost = defender.ships.every((ship) =>
+    getShipCells(ship).every((sc) =>
+      ship.hitCells?.some((hc) => hc.x === sc.x && hc.y === sc.y),
+    ),
+  );
+
+  if (defenderLost) {
+    game.state.winnerId = attackerId;
+  }
+
+  if (hitShip) {
+    game.turn = attackerId;
+  } else {
+    game.turn = defenderId;
+  }
+
+  return {
+    targetCell: cell,
+    status,
+    surroundingMisses,
+    winnerId: defenderLost ? attackerId : undefined,
+  };
 }

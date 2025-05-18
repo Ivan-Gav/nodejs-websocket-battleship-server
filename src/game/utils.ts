@@ -1,9 +1,39 @@
-import { TGameState, TPlayer } from '../types';
+import { TGameState, TPlayer, TPosition, TShip } from '../types';
 
-export const getEmptyGamestate = ([
-  player1,
-  player2,
-]: TPlayer[]): TGameState => ({
-  playerStates: {},
-  currentTurn: player1.id,
-});
+export function getEmptyGamestate([player1, player2]: TPlayer[]): TGameState {
+  return {
+    playerStates: {},
+    currentTurn: player1.id,
+  };
+}
+
+export function getShipCells(ship: TShip): TPosition[] {
+  const cells: TPosition[] = [];
+  for (let i = 0; i < ship.length; i++) {
+    cells.push({
+      x: ship.position.x + (ship.direction ? 0 : i),
+      y: ship.position.y + (ship.direction ? i : 0),
+    });
+  }
+  return cells;
+}
+
+export function getSurroundingCells(shipCells: TPosition[]): TPosition[] {
+  const surrounding = new Set<string>();
+  for (const { x, y } of shipCells) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        surrounding.add(`${nx},${ny}`);
+      }
+    }
+  }
+  for (const cell of shipCells) {
+    surrounding.delete(`${cell.x},${cell.y}`); // remove actual ship cells
+  }
+  return Array.from(surrounding).map((str) => {
+    const [x, y] = str.split(',').map(Number);
+    return { x, y };
+  });
+}
