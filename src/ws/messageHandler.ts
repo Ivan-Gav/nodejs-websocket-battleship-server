@@ -4,7 +4,7 @@ import {
   addUserToRoom,
   createGameSession,
   getPlayerBySocket,
-  broadcastToPlayers,
+  // broadcastToPlayers,
   getAvailableRooms,
   getSocketByPlayerId,
   sockets,
@@ -120,14 +120,14 @@ function send(ws: WebSocket, message: TOutgoingMessage) {
   }
 }
 
-function sendToPlayer(playerId: string, message: TOutgoingMessage) {
+export function sendToPlayer(playerId: string, message: TOutgoingMessage) {
   const ws = getSocketByPlayerId(playerId);
   if (ws) send(ws, message);
 }
 
-function broadcastRoomList() {
+export function createRoomListMessage(): TOutgoingMessage {
   const rooms = getAvailableRooms();
-  const msg: TMessage = {
+  return {
     type: 'update_room',
     data: rooms.map((room) => ({
       roomId: room.id,
@@ -135,10 +135,23 @@ function broadcastRoomList() {
     })),
     id: 0,
   };
+}
 
+export function broadcastToPlayers(
+  playerIds: string[],
+  msg: TOutgoingMessage,
+): void {
+  for (const id of playerIds) {
+    sendToPlayer(id, msg);
+  }
+}
+
+function broadcastRoomList() {
   for (const socket of sockets.values()) {
     if (socket.readyState === socket.OPEN) {
-      socket.send(specialJsonStringifyForThatCrookedFrontend(msg));
+      socket.send(
+        specialJsonStringifyForThatCrookedFrontend(createRoomListMessage()),
+      );
     }
   }
 }

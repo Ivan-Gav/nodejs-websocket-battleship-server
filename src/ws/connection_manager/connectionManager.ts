@@ -3,8 +3,13 @@ import {
   addConnection,
   removeConnection,
   getPlayerBySocket,
+  // sendToPlayer,
 } from './connectionHandlers.js';
-import { handleMessage } from '../messageHandler.js';
+import {
+  createRoomListMessage,
+  handleMessage,
+  sendToPlayer,
+} from '../messageHandler.js';
 import {
   specialJsonStringifyForThatCrookedFrontend,
   spreialJsonParseForThatCrookedFrontend,
@@ -12,7 +17,7 @@ import {
 import { registerOrLogin } from '../../auth/index.js';
 
 export function handleConnection(ws: WebSocket) {
-  // You wait for a registration message first
+  // Wait for a registration message first
   ws.on('message', (msg) => {
     const raw = msg.toString();
     const parsed = spreialJsonParseForThatCrookedFrontend(raw);
@@ -37,7 +42,7 @@ export function handleConnection(ws: WebSocket) {
 
       if (player.success && player.user) {
         addConnection(ws, player.user);
-
+        sendToPlayer(player.user.id, createRoomListMessage());
         console.log(`Player connected: ${name} (${player.user.id})`);
       }
       return;
@@ -58,7 +63,7 @@ export function handleConnection(ws: WebSocket) {
     }
 
     // Main dispatcher
-    handleMessage(ws, parsed, player); // <- Your message handler
+    handleMessage(ws, parsed, player);
   });
 
   ws.on('close', () => {
@@ -66,7 +71,7 @@ export function handleConnection(ws: WebSocket) {
     if (player) {
       console.log(`Player disconnected: ${player.name} (${player.id})`);
     }
-    removeConnection(ws); // <- Clean up all state
+    removeConnection(ws);
   });
 
   // Optional welcome

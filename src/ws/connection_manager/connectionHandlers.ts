@@ -90,18 +90,18 @@ export function getGameById(id: string): TGameSession | undefined {
 
 // ========== Messaging ==========
 
-export function sendToPlayer(playerId: string, msg: TOutgoingMessage): void {
-  const ws = sockets.get(playerId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(specialJsonStringifyForThatCrookedFrontend(msg));
-  }
-}
+// export function sendToPlayer(playerId: string, msg: TOutgoingMessage): void {
+//   const ws = sockets.get(playerId);
+//   if (ws && ws.readyState === WebSocket.OPEN) {
+//     ws.send(specialJsonStringifyForThatCrookedFrontend(msg));
+//   }
+// }
 
-export function broadcastToPlayers(
-  playerIds: string[],
-  msg: TOutgoingMessage,
-): void {
-  for (const id of playerIds) {
-    sendToPlayer(id, msg);
-  }
-}
+// export function broadcastToPlayers(
+//   playerIds: string[],
+//   msg: TOutgoingMessage,
+// ): void {
+//   for (const id of playerIds) {
+//     sendToPlayer(id, msg);
+//   }
+// }
