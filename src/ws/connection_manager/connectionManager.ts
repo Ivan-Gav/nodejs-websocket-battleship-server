@@ -71,6 +71,7 @@ export function handleConnection(ws: WebSocket) {
     if (player) {
       console.log(`Player disconnected: ${player.name} (${player.id})`);
     }
+    //TODO check cleanup
     removeConnection(ws);
   });
 

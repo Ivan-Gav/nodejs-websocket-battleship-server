@@ -1,23 +1,20 @@
 import WebSocket from 'ws';
-import {
-  createRoom,
-  addUserToRoom,
-  createGameSession,
-  getPlayerBySocket,
-  // broadcastToPlayers,
-  getAvailableRooms,
-  getSocketByPlayerId,
-  sockets,
-} from './connection_manager/index.js';
+import { getSocketByPlayerId, sockets } from './connection_manager/index.js';
 
 import type {
-  TMessage,
   TIncomingMessage,
   TOutgoingMessage,
   TPlayer,
   TPosition,
 } from '../types';
 import { specialJsonStringifyForThatCrookedFrontend } from '../utils/index.js';
+import {
+  createRoom,
+  addUserToRoom,
+  getAvailableRooms,
+  createGameSession,
+  getRoomById,
+} from '../game/game.js';
 
 export function handleMessage(
   ws: WebSocket,
@@ -26,21 +23,22 @@ export function handleMessage(
 ): void {
   switch (message.type) {
     case 'create_room': {
-      const roomId = createRoom(player);
-
-      // Broadcast updated rooms to everyone
+      createRoom(player);
       broadcastRoomList();
-
       break;
     }
-
+    //------------------------------
     case 'add_user_to_room': {
       const roomId = (
         message.data as {
           indexRoom: number | string;
         }
-      ).indexRoom;
-      const success = addUserToRoom(String(roomId), player);
+      ).indexRoom.toString();
+
+      const success = addUserToRoom(roomId, player);
+      console.log(
+        `user ${player.name} added to room ${roomId} success: ${success}`,
+      );
 
       if (!success) {
         send(ws, {
@@ -51,19 +49,19 @@ export function handleMessage(
         return;
       }
 
-      const room = getAvailableRooms().find((r) => r.id === roomId);
+      const room = getRoomById(roomId);
       if (!room || room.users.length < 2) return;
 
       // Start a game
       const gameId = createGameSession([room.users[0], room.users[1]]);
 
       // Notify both players
-      room.users.forEach((p, index) => {
-        sendToPlayer(p.id, {
+      room.users.forEach((player) => {
+        sendToPlayer(player.id, {
           type: 'create_game',
           data: {
             idGame: gameId,
-            idPlayer: p.id,
+            idPlayer: player.id,
           },
           id: 0,
         });
@@ -72,7 +70,7 @@ export function handleMessage(
       broadcastRoomList();
       break;
     }
-
+    //------------------------------
     case 'randomAttack':
     case 'attack': {
       // Here you would look up the game state, validate turn, apply hit logic
