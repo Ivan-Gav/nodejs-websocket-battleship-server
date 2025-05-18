@@ -2,6 +2,8 @@ import WebSocket from 'ws';
 import { getSocketByPlayerId, sockets } from './connection_manager/index.js';
 
 import type {
+  MessageDataMap,
+  TGameSession,
   TIncomingMessage,
   TOutgoingMessage,
   TPlayer,
@@ -14,6 +16,8 @@ import {
   getAvailableRooms,
   createGameSession,
   getRoomById,
+  addShips,
+  getGameSessionById,
 } from '../game/game.js';
 
 export function handleMessage(
@@ -70,6 +74,26 @@ export function handleMessage(
       broadcastRoomList();
       break;
     }
+
+    //------------------------------
+    case 'add_ships': {
+      const { gameId, ships, indexPlayer } =
+        message.data as unknown as MessageDataMap['add_ships'];
+      const response = addShips({
+        gameId: String(gameId),
+        indexPlayer: String(indexPlayer),
+        ships,
+      });
+
+      if (response.bothReady) {
+        const startMesages = createStartGameMessges(String(gameId));
+        Object.entries(startMesages).forEach(([playerId, message]) => {
+          sendToPlayer(playerId, message);
+        });
+      }
+      break;
+    }
+
     //------------------------------
     case 'randomAttack':
     case 'attack': {
@@ -87,13 +111,6 @@ export function handleMessage(
         },
         id: 0,
       });
-      break;
-    }
-
-    case 'add_ships': {
-      // Store ships in game session object, and when both players have sent them,
-      // trigger `start_game`
-      // (You’d need game state and ship tracking to be implemented.)
       break;
     }
 
@@ -133,6 +150,22 @@ export function createRoomListMessage(): TOutgoingMessage {
     })),
     id: 0,
   };
+}
+
+export function createStartGameMessges(gameId: string) {
+  const { state } = getGameSessionById(gameId) as TGameSession;
+
+  const messages: Record<string, TOutgoingMessage> = {};
+
+  Object.entries(state.playerStates).forEach(([playerId, playerState]) => {
+    const data: MessageDataMap['start_game'] = {
+      ships: playerState.ships,
+      currentPlayerIndex: playerId,
+    };
+    messages[playerId] = { type: 'start_game', id: 0, data };
+  });
+
+  return messages;
 }
 
 export function broadcastToPlayers(

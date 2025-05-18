@@ -50,7 +50,7 @@ export function handleConnection(ws: WebSocket) {
 
     // After registration, delegate to message handler
     const player = getPlayerBySocket(ws);
-    console.log('getPlayerBySocket returned: ', player);
+
     if (!player) {
       ws.send(
         specialJsonStringifyForThatCrookedFrontend({

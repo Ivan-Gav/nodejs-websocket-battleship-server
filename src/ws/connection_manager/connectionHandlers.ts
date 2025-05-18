@@ -8,7 +8,10 @@ import type {
   TOutgoingMessage,
 } from '../../types';
 import { specialJsonStringifyForThatCrookedFrontend } from '../../utils/index.js';
-import { removeGameOnUserExit, removeRoomOnUserExit } from '../../game/game.js';
+import {
+  removeGameSessionOnUserExit,
+  removeRoomOnUserExit,
+} from '../../game/game.js';
 
 // ========== State ==========
 
@@ -29,7 +32,7 @@ export function removeConnection(ws: WebSocket): void {
   players.delete(ws);
   sockets.delete(player.id);
   removeRoomOnUserExit(player.id);
-  removeGameOnUserExit(player.id);
+  removeGameSessionOnUserExit(player.id);
 }
 
 export function getPlayerBySocket(ws: WebSocket): TPlayer | undefined {

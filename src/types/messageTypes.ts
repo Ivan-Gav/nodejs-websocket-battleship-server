@@ -1,3 +1,5 @@
+import { TShip, TPosition } from './gameTypes';
+
 type TMessageType =
   | 'reg'
   | 'update_winners'
@@ -13,21 +15,7 @@ type TMessageType =
   | 'finish'
   | 'error';
 
-export type TPosition = {
-  x: number;
-  y: number;
-};
-
-type TShipType = 'small' | 'medium' | 'large' | 'huge';
-
-type TShip = {
-  position: TPosition;
-  direction: boolean;
-  length: number;
-  type: TShipType;
-};
-
-interface MessageDataMap {
+export interface MessageDataMap {
   reg:
     | {
         name: string;

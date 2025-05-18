@@ -1,8 +1,15 @@
 import { randomUUID } from 'crypto';
-import { TRoom, TGameSession, TPlayer } from '../types';
+import {
+  TRoom,
+  TGameSession,
+  TPlayer,
+  TShip,
+  TPlayerBoardState,
+} from '../types';
+import { getEmptyGamestate } from './utils.js';
 
 const rooms = new Map<string, TRoom>(); // roomId → room
-const games = new Map<string, TGameSession>(); // gameId → game session
+const gameSessions = new Map<string, TGameSession>(); // gameId → game session
 
 // ========== Rooms ==========
 
@@ -39,22 +46,70 @@ export function removeRoom(roomId: string): void {
   rooms.delete(roomId);
 }
 
-// ========== Games ==========
+// ========== Game sessions ==========
 
 export function createGameSession(players: [TPlayer, TPlayer]): string {
   const gameId = randomUUID();
-  games.set(gameId, { id: gameId, players, turn: players[0].id });
+  gameSessions.set(gameId, {
+    id: gameId,
+    players,
+    turn: players[0].id,
+    state: getEmptyGamestate(players),
+  });
   return gameId;
 }
 
-export function getGameById(id: string): TGameSession | undefined {
-  return games.get(id);
+export function getGameSessionById(id: string): TGameSession | undefined {
+  return gameSessions.get(id);
 }
 
-export function removeGameOnUserExit(playerId: string) {
-  for (const [gameId, game] of games) {
+export function removeGameSessionOnUserExit(playerId: string) {
+  for (const [gameId, game] of gameSessions) {
     if (game.players.find((p) => p.id === playerId)) {
-      games.delete(gameId);
+      gameSessions.delete(gameId);
     }
   }
+}
+
+// ========== Game ==========
+
+export function addShips({
+  gameId,
+  ships,
+  indexPlayer,
+}: {
+  gameId: string;
+  ships: TShip[];
+  indexPlayer: number | string;
+}) {
+  const session = getGameSessionById(gameId);
+
+  if (!session) {
+    return { success: false, bothReady: false };
+  }
+
+  const newBoard: TPlayerBoardState = {
+    ships,
+    shotsFired: [],
+    shotsReceived: [],
+  };
+
+  // add ships of the player
+  gameSessions.set(gameId, {
+    ...session,
+    state: {
+      ...session.state,
+      playerStates: { ...session.state.playerStates, [indexPlayer]: newBoard },
+    },
+  });
+
+  // check if both players added ships
+  const updatedSession = getGameSessionById(gameId);
+  console.log('updated session => ', updatedSession);
+
+  const playerStates = updatedSession?.state.playerStates;
+  if (playerStates && Object.entries(playerStates).length === 2) {
+    return { success: true, bothReady: true };
+  }
+  return { success: true, bothReady: false };
 }
