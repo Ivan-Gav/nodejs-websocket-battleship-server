@@ -10,9 +10,10 @@ type TMessageType =
   | 'attack'
   | 'randomAttack'
   | 'turn'
-  | 'finish';
+  | 'finish'
+  | 'error';
 
-type TPosition = {
+export type TPosition = {
   x: number;
   y: number;
 };
@@ -99,6 +100,8 @@ interface MessageDataMap {
   finish: {
     winPlayer: number | string;
   };
+
+  error: string;
 }
 
 export type TMessage<T extends TMessageType = TMessageType> = {
@@ -125,4 +128,5 @@ export type TOutgoingMessage = TMessage<
   | 'attack'
   | 'turn'
   | 'finish'
+  | 'error'
 >;

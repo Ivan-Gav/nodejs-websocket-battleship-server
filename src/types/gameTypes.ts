@@ -1,6 +1,8 @@
 export type TPlayer = {
   id: string;
   name: string;
+  password: string;
+  wins: number;
 };
 
 export type TRoom = {
