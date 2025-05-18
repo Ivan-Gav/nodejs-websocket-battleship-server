@@ -1,7 +1,7 @@
 import http from 'node:http';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
-import { handleConnection } from './ws/connectionManager.js';
+import { handleConnection } from './ws/connection_manager/connectionManager.js';
 
 dotenv.config();
 
