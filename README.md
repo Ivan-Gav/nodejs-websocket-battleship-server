@@ -1,31 +1,30 @@
-# RSSchool NodeJS websocket task template
-> Static http server and base task packages. 
-> By default WebSocket client tries to connect to the 3000 port.
+# Websocket battleship server
+
+This task is a part of the [RSSchool Node.js Course](https://rs.school/courses/nodejs) 2025.
+
+Task [description](https://github.com/AlreadyBored/nodejs-assignments/blob/main/assignments/battleship/assignment.md)
 
 ## Installation
-1. Clone/download repo
-2. `npm install`
+
+- clone this repo
+- switch to the `dev` branch
+- run `npm i` to install dependencies
+- create `.env` file in the root directory
+- write in the `.env` file `HTTP_PORT` and `WS_PORT` variables (as in `.env.example`)
 
 ## Usage
-**Development**
 
-`npm run start:dev`
+To use app start start both - static http and websocket servers in two separate terminals.
 
-* App served @ `http://localhost:8181` with nodemon
+## Scripts
 
-**Production**
-
-`npm run start`
-
-* App served @ `http://localhost:8181` without nodemon
+- `start:front` - start static http server for the frontend part
+- `start:dev` - start websocket server in development mode
+- `build` - build production version
+- `start` - build and start production version of the app (no need to run build beforehand)
+- `lint` - run ESlint
+- `format` - run Prettier
 
 ---
 
-**All commands**
-
-Command | Description
---- | ---
-`npm run start:dev` | App served @ `http://localhost:8181` with nodemon
-`npm run start` | App served @ `http://localhost:8181` without nodemon
-
-**Note**: replace `npm` with `yarn` in `package.json` if you use yarn.
+Thank you for checking it. Get in touch with me if you have any questions.
