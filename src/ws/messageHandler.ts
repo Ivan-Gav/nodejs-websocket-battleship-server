@@ -145,17 +145,22 @@ export function handleMessage(
         });
       });
 
-      // Optionally notify both players of game over
+      // Notify both players of game over
       if (result.winnerId) {
-        // send winner notification
+        players.forEach((player) => {
+          sendToPlayer(player.id, {
+            type: 'finish',
+            data: {
+              winPlayer: result.winnerId!,
+            },
+            id: 0,
+          });
+        });
+
+        // broadcast update_winners
       }
       break;
     }
-
-    // case 'finish': {
-    //   // Notify both players and clean up game
-    //   break;
-    // }
 
     default: {
       send(ws, {
