@@ -19,6 +19,7 @@ import {
   addShips,
   getGameSessionById,
   applyAttack,
+  updateWinners,
 } from '../game/game.js';
 import { getRandomPosition } from '../game/utils.js';
 
@@ -200,7 +201,7 @@ function handleAttack({
     });
   });
 
-  // Notify both players of game over
+  // Notify players of game over
   if (result.winnerId) {
     players.forEach((player) => {
       sendToPlayer(player.id, {
@@ -212,7 +213,9 @@ function handleAttack({
       });
     });
 
-    // TODO broadcast update_winners
+    const winner = players.find((player) => player.id === result.winnerId);
+    const winners = updateWinners(winner!);
+    broadcastToAllPlayers({ type: 'update_winners', data: winners, id: 0 });
   }
 }
 
@@ -273,6 +276,14 @@ export function broadcastToPlayers(
 ): void {
   for (const id of playerIds) {
     sendToPlayer(id, msg);
+  }
+}
+
+function broadcastToAllPlayers(msg: TOutgoingMessage) {
+  for (const socket of sockets.values()) {
+    if (socket.readyState === socket.OPEN) {
+      socket.send(specialJsonStringifyForThatCrookedFrontend(msg));
+    }
   }
 }
 

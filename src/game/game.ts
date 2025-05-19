@@ -16,6 +16,7 @@ import {
 
 const rooms = new Map<string, TRoom>(); // roomId → room
 const gameSessions = new Map<string, TGameSession>(); // gameId → game session
+const winners = new Map<TPlayer, number>();
 
 // ========== Rooms ==========
 
@@ -124,6 +125,8 @@ export function addShips({
   return { success: true, bothReady: false };
 }
 
+// ==========================
+
 export function applyAttack(
   gameId: string | number,
   attackerId: string | number,
@@ -217,4 +220,17 @@ export function applyAttack(
     surroundingMisses,
     winnerId: defenderLost ? attackerId : undefined,
   };
+}
+
+// ==========================
+
+export function updateWinners(winner: TPlayer) {
+  const savedWins = winners.get(winner);
+  winner.wins += 1;
+
+  winners.set(winner, winner.wins);
+
+  return Array.from(winners)
+    .sort((a, b) => b[1] - a[1])
+    .map(([player, wins]) => ({ name: player.name, wins }));
 }
