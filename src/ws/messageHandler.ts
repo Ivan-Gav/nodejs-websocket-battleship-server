@@ -78,15 +78,16 @@ export function handleMessage(
       const { gameId, ships, indexPlayer } =
         message.data as unknown as MessageDataMap['add_ships'];
       const response = addShips({
-        gameId: String(gameId),
-        indexPlayer: String(indexPlayer),
+        gameId: gameId,
+        indexPlayer: indexPlayer,
         ships,
       });
 
       if (response.bothReady) {
-        const startMesages = createStartGameMessges(String(gameId));
-        Object.entries(startMesages).forEach(([playerId, message]) => {
-          sendToPlayer(playerId, message);
+        const startMesages = createStartGameMessages(gameId);
+        Object.entries(startMesages).forEach(([playerId, messages]) => {
+          sendToPlayer(playerId, messages[0]);
+          sendToPlayer(playerId, messages[1]);
         });
       }
       break;
@@ -102,13 +103,16 @@ export function handleMessage(
         indexPlayer: number | string;
       };
 
-      const result = applyAttack(String(gameId), String(indexPlayer), { x, y });
+      const result = applyAttack(gameId, indexPlayer, { x, y });
+      const session = getGameSessionById(gameId);
 
-      if (!result) return;
+      if (!result || !session) return;
 
-      // Send primary shot feedback
-      ws.send(
-        specialJsonStringifyForThatCrookedFrontend({
+      const { players, turn } = session;
+
+      players.forEach((player) => {
+        // Send primary shot feedback
+        sendToPlayer(player.id, {
           type: 'attack',
           data: {
             position: result.targetCell,
@@ -116,14 +120,11 @@ export function handleMessage(
             status: result.status,
           },
           id: 0,
-        }),
-      );
-
-      // Send automatic surrounding misses if ship was killed
-      if (result.status === 'killed' && result.surroundingMisses.length > 0) {
-        for (const missedCell of result.surroundingMisses) {
-          ws.send(
-            specialJsonStringifyForThatCrookedFrontend({
+        });
+        // Send automatic surrounding misses if ship was killed
+        if (result.status === 'killed' && result.surroundingMisses.length > 0) {
+          for (const missedCell of result.surroundingMisses) {
+            sendToPlayer(player.id, {
               type: 'attack',
               data: {
                 position: missedCell,
@@ -131,10 +132,18 @@ export function handleMessage(
                 status: 'miss',
               },
               id: 0,
-            }),
-          );
+            });
+          }
         }
-      }
+        // Send turn
+        sendToPlayer(player.id, {
+          type: 'turn',
+          data: {
+            currentPlayer: turn,
+          },
+          id: 0,
+        });
+      });
 
       // Optionally notify both players of game over
       if (result.winnerId) {
@@ -181,17 +190,27 @@ export function createRoomListMessage(): TOutgoingMessage {
   };
 }
 
-export function createStartGameMessges(gameId: string) {
+export function createStartGameMessages(gameId: string | number) {
   const { state } = getGameSessionById(gameId) as TGameSession;
 
-  const messages: Record<string, TOutgoingMessage> = {};
+  const messages: Record<string, TOutgoingMessage[]> = {};
 
   Object.entries(state.playerStates).forEach(([playerId, playerState]) => {
-    const data: MessageDataMap['start_game'] = {
+    const starData: MessageDataMap['start_game'] = {
       ships: playerState.ships,
       currentPlayerIndex: playerId,
     };
-    messages[playerId] = { type: 'start_game', id: 0, data };
+
+    const turnData: MessageDataMap['turn'] = {
+      currentPlayer: getGameSessionById(String(gameId))?.turn || playerId,
+    };
+
+    messages[playerId] = [{ type: 'start_game', id: 0, data: starData }];
+    messages[playerId].push({
+      type: 'turn',
+      id: 0,
+      data: turnData,
+    });
   });
 
   return messages;

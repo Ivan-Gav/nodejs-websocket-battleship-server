@@ -67,8 +67,10 @@ export function createGameSession(players: [TPlayer, TPlayer]): string {
   return gameId;
 }
 
-export function getGameSessionById(id: string): TGameSession | undefined {
-  return gameSessions.get(id);
+export function getGameSessionById(
+  id: string | number,
+): TGameSession | undefined {
+  return gameSessions.get(String(id));
 }
 
 export function removeGameSessionOnUserExit(playerId: string) {
@@ -86,7 +88,7 @@ export function addShips({
   ships,
   indexPlayer,
 }: {
-  gameId: string;
+  gameId: string | number;
   ships: TShip[];
   indexPlayer: number | string;
 }) {
@@ -103,7 +105,7 @@ export function addShips({
   };
 
   // add ships of the player
-  gameSessions.set(gameId, {
+  gameSessions.set(String(gameId), {
     ...session,
     state: {
       ...session.state,
@@ -116,14 +118,15 @@ export function addShips({
 
   const playerStates = updatedSession?.state.playerStates;
   if (playerStates && Object.entries(playerStates).length === 2) {
+    updatedSession.state.currentTurn = updatedSession.players[0].id;
     return { success: true, bothReady: true };
   }
   return { success: true, bothReady: false };
 }
 
 export function applyAttack(
-  gameId: string,
-  attackerId: string,
+  gameId: string | number,
+  attackerId: string | number,
   cell: TPosition,
 ): TAttackResult | null {
   const game = getGameSessionById(gameId);
@@ -201,6 +204,7 @@ export function applyAttack(
     game.state.winnerId = attackerId;
   }
 
+  // set next turn
   if (hitShip) {
     game.turn = attackerId;
   } else {
