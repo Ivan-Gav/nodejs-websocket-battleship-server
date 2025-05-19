@@ -20,6 +20,7 @@ import {
   getGameSessionById,
   applyAttack,
 } from '../game/game.js';
+import { getRandomPosition } from '../game/utils.js';
 
 export function handleMessage(
   ws: WebSocket,
@@ -94,73 +95,45 @@ export function handleMessage(
     }
 
     //------------------------------
-    case 'randomAttack':
+    case 'randomAttack': {
+      const { gameId, indexPlayer } = message.data as unknown as {
+        gameId: number | string;
+        indexPlayer: number | string;
+      };
+      const session = getGameSessionById(gameId);
+      if (!session) {
+        return;
+      }
+      const { players, state } = session;
+
+      const { shotsFired } = state.playerStates[indexPlayer];
+      const randomPosition = getRandomPosition(shotsFired);
+
+      if (!randomPosition) {
+        return;
+      }
+
+      const { x, y } = randomPosition;
+
+      handleAttack({ gameId, x, y, indexPlayer });
+
+      break;
+    }
+
     case 'attack': {
-      const { gameId, x, y, indexPlayer } = message.data as unknown as {
+      const data = message.data as unknown as {
         gameId: number | string;
         x: number;
         y: number;
         indexPlayer: number | string;
       };
 
-      const result = applyAttack(gameId, indexPlayer, { x, y });
-      const session = getGameSessionById(gameId);
+      handleAttack(data);
 
-      if (!result || !session) return;
-
-      const { players, turn } = session;
-
-      players.forEach((player) => {
-        // Send primary shot feedback
-        sendToPlayer(player.id, {
-          type: 'attack',
-          data: {
-            position: result.targetCell,
-            currentPlayer: indexPlayer,
-            status: result.status,
-          },
-          id: 0,
-        });
-        // Send automatic surrounding misses if ship was killed
-        if (result.status === 'killed' && result.surroundingMisses.length > 0) {
-          for (const missedCell of result.surroundingMisses) {
-            sendToPlayer(player.id, {
-              type: 'attack',
-              data: {
-                position: missedCell,
-                currentPlayer: indexPlayer,
-                status: 'miss',
-              },
-              id: 0,
-            });
-          }
-        }
-        // Send turn
-        sendToPlayer(player.id, {
-          type: 'turn',
-          data: {
-            currentPlayer: turn,
-          },
-          id: 0,
-        });
-      });
-
-      // Notify both players of game over
-      if (result.winnerId) {
-        players.forEach((player) => {
-          sendToPlayer(player.id, {
-            type: 'finish',
-            data: {
-              winPlayer: result.winnerId!,
-            },
-            id: 0,
-          });
-        });
-
-        // broadcast update_winners
-      }
       break;
     }
+
+    //------------------------------
 
     default: {
       send(ws, {
@@ -171,6 +144,79 @@ export function handleMessage(
     }
   }
 }
+
+//--------- HANDLE ATTACK ---------------------
+
+function handleAttack({
+  gameId,
+  x,
+  y,
+  indexPlayer,
+}: {
+  gameId: number | string;
+  x: number;
+  y: number;
+  indexPlayer: number | string;
+}) {
+  const result = applyAttack(gameId, indexPlayer, { x, y });
+  const session = getGameSessionById(gameId);
+
+  if (!result || !session) return;
+
+  const { players, turn } = session;
+
+  players.forEach((player) => {
+    // Send primary shot feedback
+    sendToPlayer(player.id, {
+      type: 'attack',
+      data: {
+        position: result.targetCell,
+        currentPlayer: indexPlayer,
+        status: result.status,
+      },
+      id: 0,
+    });
+    // Send automatic surrounding misses if ship was killed
+    if (result.status === 'killed' && result.surroundingMisses.length > 0) {
+      for (const missedCell of result.surroundingMisses) {
+        sendToPlayer(player.id, {
+          type: 'attack',
+          data: {
+            position: missedCell,
+            currentPlayer: indexPlayer,
+            status: 'miss',
+          },
+          id: 0,
+        });
+      }
+    }
+    // Send turn
+    sendToPlayer(player.id, {
+      type: 'turn',
+      data: {
+        currentPlayer: turn,
+      },
+      id: 0,
+    });
+  });
+
+  // Notify both players of game over
+  if (result.winnerId) {
+    players.forEach((player) => {
+      sendToPlayer(player.id, {
+        type: 'finish',
+        data: {
+          winPlayer: result.winnerId!,
+        },
+        id: 0,
+      });
+    });
+
+    // TODO broadcast update_winners
+  }
+}
+
+//------------------------------
 
 function send(ws: WebSocket, message: TOutgoingMessage) {
   if (ws.readyState === WebSocket.OPEN) {

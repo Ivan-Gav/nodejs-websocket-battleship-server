@@ -37,3 +37,24 @@ export function getSurroundingCells(shipCells: TPosition[]): TPosition[] {
     return { x, y };
   });
 }
+
+export function getRandomPosition(shotsFired: TPosition[]): TPosition | null {
+  const allPositions: TPosition[] = [];
+
+  for (let x = 0; x < 10; x++) {
+    for (let y = 0; y < 10; y++) {
+      allPositions.push({ x, y });
+    }
+  }
+
+  const remainingPositions = allPositions.filter(
+    (pos) => !shotsFired.some((shot) => shot.x === pos.x && shot.y === pos.y),
+  );
+
+  if (remainingPositions.length === 0) {
+    return null;
+  }
+
+  const randomIndex = Math.floor(Math.random() * remainingPositions.length);
+  return remainingPositions[randomIndex];
+}
